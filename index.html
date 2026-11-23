@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nokia Snake</title>
+<style>
+  :root { --lcd:#9bbc0f; --dark:#0f380f; --mid:#306230; --light:#8bac0f; }
+  * { box-sizing:border-box }
+  body { margin:0; min-height:100vh; display:grid; place-items:center; padding:18px;
+    background:radial-gradient(circle at 50% 20%,#3d4b35,#101810 70%); color:#e7f1d0;
+    font-family:Arial,Helvetica,sans-serif; }
+  .phone { width:min(440px,100%); background:linear-gradient(145deg,#d9ddd0,#858d7d);
+    border:8px solid #535c4d; border-radius:34px; padding:22px 18px 26px;
+    box-shadow:0 22px 55px #0009,inset 0 2px 5px #fff9; }
+  .brand { color:#303a2b; text-align:center; font-weight:900; letter-spacing:5px;
+    font-size:20px; margin:0 0 14px; }
+  .screen { background:var(--lcd); border:8px solid #384331; border-radius:8px;
+    padding:10px; box-shadow:inset 0 0 18px #263b1644; }
+  .top { display:flex; justify-content:space-between; color:var(--dark); font-weight:800;
+    font-size:12px; margin:0 2px 7px; }
+  canvas { display:block; width:100%; aspect-ratio:11/8; image-rendering:auto;
+    background:var(--lcd); }
+  .hint { color:var(--dark); text-align:center; font-size:11px; font-weight:bold; margin-top:6px; }
+  .stats { display:flex; justify-content:space-between; gap:8px; margin:15px 2px;
+    color:#263025; font-weight:bold; font-size:14px; }
+  .controls { display:flex; flex-wrap:wrap; justify-content:center; gap:9px; }
+  button { border:0; border-radius:20px; padding:11px 16px; font-weight:800;
+    color:#f3f7e8; background:linear-gradient(#596653,#303b2c); box-shadow:0 4px 0 #20291d;
+    cursor:pointer; }
+  button:active { transform:translateY(3px); box-shadow:0 1px 0 #20291d; }
+  button.primary { background:linear-gradient(#527b38,#2e5124); }
+  .keypad { width:210px; margin:18px auto 16px; display:grid;
+    grid-template-columns:repeat(3,1fr); gap:7px; }
+  .phone-key { height:43px; padding:0; border:1px solid #52594d; border-radius:12px;
+    background:linear-gradient(#8d9585,#626b5c); color:#f3f7e8;
+    box-shadow:0 3px 0 #3f473a; display:flex; align-items:center;
+    justify-content:center; gap:5px; font-family:inherit; cursor:pointer; }
+  .phone-key .digit { font-size:17px; font-weight:800; }
+  .phone-key .letters { font-size:7px; font-weight:bold; opacity:.8; }
+  .phone-key.is-pressed { animation:key-press .06s ease-out; }
+  @keyframes key-press {
+    0%, 60% { transform:translateY(3px); color:#fff;
+      background:linear-gradient(#e85b50,#b8221f); box-shadow:0 0 0 #3f473a,0 0 12px #f0443688; }
+    100% { transform:translateY(0); color:#f3f7e8;
+      background:linear-gradient(#8d9585,#626b5c); box-shadow:0 3px 0 #3f473a; }
+  }
+  .keypad-status { grid-column:1/-1; margin-top:3px; color:#303a2b;
+    text-align:center; font-size:10px; font-weight:800; letter-spacing:1px; }
+  .note { color:#d0d9c8; text-align:center; font-size:12px; line-height:1.5; margin:17px 8px 0; }
+</style>
+</head>
+<body>
+<main class="phone">
+  <div class="brand">NOKIA</div>
+  <section class="screen">
+    <div class="top"><span>SNAKE II</span><span id="status">READY</span></div>
+    <canvas id="game" width="352" height="256" aria-label="Snake game"></canvas>
+    <div class="hint">KhushWANt SYNQ</div>
+  </section>
+  <div class="stats">
+    <span>SCORE: <span id="score">0</span></span>
+    <span>BEST: <span id="best">0</span></span>
+    <span id="level">LEVEL 1</span>
+  </div>
+  <div class="keypad" id="keypad" aria-label="Directional controls">
+    <div class="phone-key"><span class="digit">1</span><span class="letters">.</span></div>
+    <button type="button" class="phone-key" data-direction="up" aria-label="Move up"><span class="digit">2</span><span class="letters">↑ ABC</span></button>
+    <div class="phone-key"><span class="digit">3</span><span class="letters">DEF</span></div>
+    <button type="button" class="phone-key" data-direction="left" aria-label="Move left"><span class="digit">4</span><span class="letters">← GHI</span></button>
+    <div class="phone-key"><span class="digit">5</span><span class="letters">OK JKL</span></div>
+    <button type="button" class="phone-key" data-direction="right" aria-label="Move right"><span class="digit">6</span><span class="letters">→ MNO</span></button>
+    <div class="phone-key"><span class="digit">7</span><span class="letters">PQRS</span></div>
+    <button type="button" class="phone-key" data-direction="down" aria-label="Move down"><span class="digit">8</span><span class="letters">↓ TUV</span></button>
+    <div class="phone-key"><span class="digit">9</span><span class="letters">WXYZ</span></div>
+    <div class="phone-key"><span class="digit">*</span></div>
+    <div class="phone-key"><span class="digit">0</span><span class="letters">+</span></div>
+    <div class="phone-key"><span class="digit">#</span></div>
+    <div class="keypad-status" id="keypadStatus" aria-live="polite">READY</div>
+  </div>
+  <div class="controls">
+    <button class="primary" id="toggle">Pause</button>
+    <button id="restart">Restart</button>
+    <button id="speed">Speed: Normal</button>
+  </div>
+  <p class="note">Press a direction to start. Use the arrow keys, WASD, or phone keypad 2, 4, 6, and 8 to steer. Avoid the walls and your tail.</p>
+</main>
+<script>
+(() => {
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const cols = 22, rows = 16, cell = 16;
+  const targetScore = 332;
+  const scoreEl = document.getElementById('score');
+  const bestEl = document.getElementById('best');
+  const statusEl = document.getElementById('status');
+  const levelEl = document.getElementById('level');
+  const toggleBtn = document.getElementById('toggle');
+  const speedBtn = document.getElementById('speed');
+  const keypadKeys = [...document.querySelectorAll('.phone-key[data-direction]')];
+  const keypadStatus = document.getElementById('keypadStatus');
+  let keypadDirection = null;
+  keypadKeys.forEach(button=>button.addEventListener('animationend',()=>{
+    button.classList.remove('is-pressed');
+  }));
+  const C = { dark:'#0b0b0b', body:'#306230', food:'#d6452f', light:'#8bac0f', lcd:'#9bbc0f' };
+  let snake, food, score, best = Number(localStorage.getItem('nokiaSnakeBest') || 0);
+  let running = true, started = false, gameOver = false, won = false, timer = null;
+  let speed = 125, speedMode = 1, direction = {x:1,y:0}, nextDirection = direction;
+  bestEl.textContent = best;
+
+  const key = p => p.x + ',' + p.y;
+
+  function placeFood() {
+    const occupied = new Set(snake.map(key));
+    const free = [];
+    for (let y=0;y<rows;y++) for(let x=0;x<cols;x++)
+      if (!occupied.has(key({x,y}))) free.push({x,y});
+    if (!free.length) return null;
+    return free[Math.floor(Math.random()*free.length)];
+  }
+  function reset() {
+    snake = [{x:11,y:8},{x:10,y:8},{x:9,y:8}];
+    direction = {x:1,y:0}; nextDirection = direction;
+    score = 0; food = placeFood(); running = true; started = false; gameOver = false; won = false;
+    keypadDirection = null;
+    keypadStatus.textContent = 'READY';
+    updateUI(); draw(); startTimer();
+  }
+  function showPressedDirection(direction) {
+    if (direction === keypadDirection) return;
+    keypadDirection = direction;
+    const pressedKey = keypadKeys.find(button=>button.dataset.direction===direction);
+    keypadKeys.forEach(button=>button.classList.remove('is-pressed'));
+    if (pressedKey) {
+      void pressedKey.offsetWidth;
+      pressedKey.classList.add('is-pressed');
+    }
+    keypadStatus.textContent = direction.toUpperCase();
+  }
+  function steer(name) {
+    if (gameOver || won) return;
+    const directions = {
+      up:{x:0,y:-1}, right:{x:1,y:0}, down:{x:0,y:1}, left:{x:-1,y:0}
+    };
+    const requested = directions[name];
+    if (!requested) return;
+    if (!started) {
+      direction = requested; nextDirection = requested; started = true;
+      showPressedDirection(name); updateUI(); draw();
+      return;
+    }
+    if ((requested.x===-direction.x && requested.y===-direction.y) ||
+        (requested.x===-nextDirection.x && requested.y===-nextDirection.y)) return;
+    if (requested.x===nextDirection.x && requested.y===nextDirection.y) return;
+    nextDirection = requested;
+    showPressedDirection(name);
+  }
+  function updateUI() {
+    scoreEl.textContent = score;
+    levelEl.textContent = 'LEVEL ' + (1 + Math.floor(score/5));
+    statusEl.textContent = won ? 'TARGET REACHED' : gameOver ? 'GAME OVER' :
+      !started ? 'READY' : running ? 'PLAY' : 'PAUSED';
+    toggleBtn.textContent = won ? 'Complete' : gameOver ? 'Game Over' :
+      !started ? 'Start' : running ? 'Pause' : 'Resume';
+    toggleBtn.disabled = gameOver || won;
+  }
+  function draw() {
+    ctx.fillStyle = C.lcd; ctx.fillRect(0,0,canvas.width,canvas.height);
+    // Subtle LCD pixel grid
+    ctx.strokeStyle = '#789b0b'; ctx.globalAlpha = .22; ctx.lineWidth = .5;
+    for(let x=0;x<=cols;x++){ctx.beginPath();ctx.moveTo(x*cell,0);ctx.lineTo(x*cell,canvas.height);ctx.stroke();}
+    for(let y=0;y<=rows;y++){ctx.beginPath();ctx.moveTo(0,y*cell);ctx.lineTo(canvas.width,y*cell);ctx.stroke();}
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = C.dark; ctx.lineWidth = 3;
+    ctx.strokeRect(1.5,1.5,canvas.width-3,canvas.height-3);
+    if(food){
+      ctx.fillStyle=C.food;
+      ctx.beginPath();
+      ctx.arc(food.x*cell+8,food.y*cell+9,5.5,0,Math.PI*2);
+      ctx.fill();
+      ctx.fillStyle=C.dark;
+      ctx.fillRect(food.x*cell+7,food.y*cell+2,2,4);
+      ctx.fillStyle=C.mid;
+      ctx.beginPath();
+      ctx.ellipse(food.x*cell+11,food.y*cell+4,3,1.5,-.5,0,Math.PI*2);
+      ctx.fill();
+    }
+    const points=snake.map(p=>({x:p.x*cell+8,y:p.y*cell+8}));
+    if(points.length>1){
+      ctx.beginPath();
+      ctx.moveTo(points[points.length-1].x,points[points.length-1].y);
+      for(let i=points.length-2;i>0;i--){
+        const current=points[i], next=points[i-1];
+        ctx.quadraticCurveTo(current.x,current.y,(current.x+next.x)/2,(current.y+next.y)/2);
+      }
+      ctx.lineTo(points[0].x,points[0].y);
+      ctx.lineCap='round'; ctx.lineJoin='round';
+      ctx.strokeStyle=C.dark; ctx.lineWidth=13; ctx.stroke();
+      const bodyGradient=ctx.createLinearGradient(0,0,0,canvas.height);
+      bodyGradient.addColorStop(0,'#527b38');
+      bodyGradient.addColorStop(1,C.body);
+      ctx.strokeStyle=bodyGradient; ctx.lineWidth=10; ctx.stroke();
+      ctx.strokeStyle='#8bac0f88'; ctx.lineWidth=2; ctx.stroke();
+      for(let i=1;i<points.length-1;i++){
+        const before=points[i-1], after=points[i+1], point=points[i];
+        const dx=before.x-after.x, dy=before.y-after.y, length=Math.hypot(dx,dy)||1;
+        ctx.fillStyle='#8bac0f99';
+        ctx.beginPath();
+        ctx.arc(point.x-dy/length*2,point.y+dx/length*2,1.2,0,Math.PI*2);
+        ctx.fill();
+      }
+    }
+    const head=points[0], neck=points[1]||{x:head.x,y:head.y+1};
+    const directionX=Math.sign(head.x-neck.x), directionY=Math.sign(head.y-neck.y);
+    const sideX=-directionY, sideY=directionX;
+    ctx.fillStyle=C.dark;
+    ctx.beginPath(); ctx.arc(head.x,head.y,7,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#527b38';
+    ctx.beginPath(); ctx.arc(head.x,head.y,5.7,0,Math.PI*2); ctx.fill();
+    for(const side of [-1,1]){
+      const eyeX=head.x+directionX*1.5+sideX*2.7*side;
+      const eyeY=head.y+directionY*1.5+sideY*2.7*side;
+      ctx.fillStyle='#f3f7e8';
+      ctx.beginPath(); ctx.arc(eyeX,eyeY,1.7,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle=C.dark;
+      ctx.beginPath(); ctx.arc(eyeX+directionX*.5,eyeY+directionY*.5,.8,0,Math.PI*2); ctx.fill();
+    }
+    ctx.strokeStyle=C.food; ctx.lineWidth=1.2; ctx.lineCap='round';
+    ctx.beginPath();
+    ctx.moveTo(head.x+directionX*5,head.y+directionY*5);
+    ctx.lineTo(head.x+directionX*8,head.y+directionY*8);
+    ctx.moveTo(head.x+directionX*7,head.y+directionY*7);
+    ctx.lineTo(head.x+directionX*8+sideX*1.5,head.y+directionY*8+sideY*1.5);
+    ctx.moveTo(head.x+directionX*7,head.y+directionY*7);
+    ctx.lineTo(head.x+directionX*8-sideX*1.5,head.y+directionY*8-sideY*1.5);
+    ctx.stroke();
+    if(!running || !started){
+      ctx.fillStyle='#0f380fdd';
+      ctx.fillRect(canvas.width/2-112,canvas.height/2-19,224,38);
+      ctx.fillStyle=C.lcd; ctx.font='bold 18px monospace'; ctx.textAlign='center';
+      const message = won ? 'SCORE 332!' : gameOver ? 'GAME OVER' : started ? 'PAUSED' : 'PRESS A DIRECTION';
+      ctx.fillText(message,canvas.width/2,canvas.height/2+6);
+    }
+  }
+  function step() {
+    if(!running || !started || gameOver || won) return;
+    direction = nextDirection;
+    const next = {x:snake[0].x+direction.x,y:snake[0].y+direction.y};
+    if(next.x<0 || next.x>=cols || next.y<0 || next.y>=rows) {
+      running=false; gameOver=true; updateUI(); draw(); return;
+    }
+    const eating = food && key(next)===key(food);
+    if ((eating ? snake : snake.slice(0,-1)).some(part=>key(part)===key(next))) {
+      running=false; gameOver=true; updateUI(); draw(); return;
+    }
+    snake.unshift(next);
+    if(eating){
+      score++;
+      if(score>best){best=score;localStorage.setItem('nokiaSnakeBest',best);}
+      if(score>=targetScore){
+        food=null; running=false; won=true;
+      } else {
+        food=placeFood();
+        if(!food){ running=false; won=true; }
+      }
+    } else snake.pop();
+    updateUI(); bestEl.textContent=best; draw();
+  }
+  function startTimer(){ clearInterval(timer); timer=setInterval(step,speed); }
+  toggleBtn.addEventListener('click',()=>{
+    if(gameOver || won) return;
+    if(!started){started=true;running=true;}
+    else running=!running;
+    updateUI();draw();
+  });
+  document.getElementById('restart').addEventListener('click',reset);
+  keypadKeys.forEach(button=>button.addEventListener('click',()=>steer(button.dataset.direction)));
+  speedBtn.addEventListener('click',()=>{
+    speedMode=(speedMode+1)%3;
+    speed=[190,125,70][speedMode];
+    speedBtn.textContent=['Speed: Slow','Speed: Normal','Speed: Fast'][speedMode];
+    startTimer();
+  });
+  const keyboardDirections = {
+    ArrowUp:'up', w:'up', W:'up', ArrowRight:'right', d:'right', D:'right',
+    ArrowDown:'down', s:'down', S:'down', ArrowLeft:'left', a:'left', A:'left',
+    '2':'up', '6':'right', '8':'down', '4':'left'
+  };
+  document.addEventListener('keydown',e=>{
+    if (keyboardDirections[e.key]) {
+      e.preventDefault();
+      steer(keyboardDirections[e.key]);
+    }
+    if(e.code==='Space'){e.preventDefault();toggleBtn.click();}
+    if(e.key.toLowerCase()==='r') reset();
+  });
+  reset();
+})();
+</script>
+</body>
+</html>
